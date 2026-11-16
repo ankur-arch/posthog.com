@@ -1,7 +1,4 @@
-import { IconFastForward, IconPauseFilled, IconPlayFilled } from '@posthog/icons'
-import { IconFullScreen, IconPlayhead, IconVolumeFull, IconVolumeHalf, IconVolumeMuted } from 'components/OSIcons/Icons'
-import { Select } from 'components/RadixUI/Select'
-import ZoomHover from 'components/ZoomHover'
+import MediaControls from 'components/MediaControls'
 import React, { useEffect, useRef, useState } from 'react'
 // Add types for YouTube and Wistia APIs to avoid TS errors
 declare global {
@@ -35,15 +32,13 @@ export default function MediaPlayer({
         duration: 0,
         playbackRate: 1,
     })
-    const [isScrubbing, setIsScrubbing] = useState(false)
-    const [scrubTime, setScrubTime] = useState(0)
     const [isSeeking, setIsSeeking] = useState(false)
     const seekSuppressTimeout = useRef<NodeJS.Timeout | null>(null)
     const containerRef = React.useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         let interval: NodeJS.Timeout | null = null
-        if (playerState.player && playerState.isPlaying && !isScrubbing && !isSeeking) {
+        if (playerState.player && playerState.isPlaying && !isSeeking) {
             interval = setInterval(() => {
                 let currentTime = 0
                 if (source === 'youtube') {
@@ -57,7 +52,7 @@ export default function MediaPlayer({
         return () => {
             if (interval) clearInterval(interval)
         }
-    }, [playerState.player, playerState.isPlaying, isScrubbing, isSeeking, source])
+    }, [playerState.player, playerState.isPlaying, isSeeking, source])
 
     useEffect(() => {
         if (source === 'youtube') {
@@ -236,19 +231,7 @@ export default function MediaPlayer({
         seekSuppressTimeout.current = setTimeout(() => setIsSeeking(false), 400)
     }
 
-    const handleSeek = (seconds: number) => {
-        if (!playerState.player) return
-        let currentTime = 0
-        if (source === 'youtube') {
-            currentTime = playerState.player.getCurrentTime()
-        } else if (source === 'wistia') {
-            currentTime = playerState.player.time()
-        }
-        performSeek(currentTime + seconds)
-    }
-
-    const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const volume = Number(event.target.value)
+    const handleVolumeChange = (volume: number) => {
         if (playerState.player) {
             if (source === 'youtube') {
                 playerState.player.setVolume(volume)
@@ -321,27 +304,6 @@ export default function MediaPlayer({
         }
     }
 
-    // Scrubbing handlers
-    const handleScrubStart = () => {
-        setIsScrubbing(true)
-        setScrubTime(playerState.currentTime)
-    }
-    const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setScrubTime(Number(e.target.value))
-    }
-    const handleScrubEndMouse = (e: React.MouseEvent<HTMLInputElement>) => {
-        const newTime = Number((e.target as HTMLInputElement).value)
-        setScrubTime(newTime)
-        performSeek(newTime)
-        setIsScrubbing(false)
-    }
-    const handleScrubEndTouch = (e: React.TouchEvent<HTMLInputElement>) => {
-        const newTime = Number((e.target as HTMLInputElement).value)
-        setScrubTime(newTime)
-        performSeek(newTime)
-        setIsScrubbing(false)
-    }
-
     useEffect(() => {
         return () => {
             if (!seekSuppressTimeout.current) return
@@ -371,133 +333,20 @@ export default function MediaPlayer({
                             )}
                         </div>
 
-                        {/* Scrubbing bar */}
-                        <div className="w-full px-2 py-1 bg-[#EFF7DE] dark:bg-primary border border-primary rounded-sm flex items-center gap-2">
-                            <span className="text-sm font-semibold text-right dark:text-white w-24">
-                                {Math.floor((isScrubbing ? scrubTime : playerState.currentTime) / 60)}:
-                                {Math.floor((isScrubbing ? scrubTime : playerState.currentTime) % 60)
-                                    .toString()
-                                    .padStart(2, '0')}{' '}
-                                / {Math.floor(playerState.duration / 60)}:
-                                {Math.floor(playerState.duration % 60)
-                                    .toString()
-                                    .padStart(2, '0')}
-                            </span>
-                            <div className="relative w-full flex-1">
-                                <input
-                                    type="range"
-                                    min={0}
-                                    max={playerState.duration || 0}
-                                    value={isScrubbing ? scrubTime : playerState.currentTime}
-                                    onMouseDown={handleScrubStart}
-                                    onTouchStart={handleScrubStart}
-                                    onChange={handleScrub}
-                                    onMouseUp={handleScrubEndMouse}
-                                    onTouchEnd={handleScrubEndTouch}
-                                    className={`quicktime-scrubber`}
-                                    step={0.1}
-                                />
-                                <div
-                                    className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-                                    style={{
-                                        left: `${
-                                            playerState.duration
-                                                ? ((isScrubbing ? scrubTime : playerState.currentTime) /
-                                                      playerState.duration) *
-                                                  100
-                                                : 0
-                                        }%`,
-                                    }}
-                                >
-                                    <IconPlayhead className="w-[11px] h-[15px] shrink-0" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Control bar */}
-                        <div className="flex items-center px-2 @md:px-4 py-2 bg-accent border-t border-primary gap-1 @md:gap-2">
-                            <div className="flex flex-row gap-1 @md:gap-2 items-center shrink-0">
-                                <button
-                                    onClick={toggleMute}
-                                    className="text-sm font-semibold text-right dark:text-white"
-                                >
-                                    {playerState.isMuted ? (
-                                        <IconVolumeMuted className="size-6" />
-                                    ) : playerState.volume > 50 ? (
-                                        <IconVolumeFull className="size-6" />
-                                    ) : (
-                                        <IconVolumeHalf className="size-6" />
-                                    )}
-                                </button>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={playerState.volume}
-                                    onChange={handleVolumeChange}
-                                    className="hidden @md:block w-24 volume-slider"
-                                    style={{
-                                        accentColor: 'currentColor',
-                                    }}
-                                />
-                            </div>
-                            <div className="flex-1 min-w-0 flex flex-row gap-1 @md:gap-2 items-center justify-center">
-                                <ZoomHover size="md">
-                                    <button
-                                        onClick={() => handleSeek(-10)}
-                                        className="size-10 rounded-full border-2 border-primary bg-primary flex justify-center items-center text-secondary hover:text-primary"
-                                    >
-                                        <IconFastForward className="size-6 scale-x-[-1]" />
-                                    </button>
-                                </ZoomHover>
-                                <ZoomHover size="md">
-                                    <button
-                                        onClick={handlePlayPause}
-                                        className="size-12 rounded-full border-2 border-primary bg-primary flex items-center text-secondary hover:text-primary justify-center"
-                                    >
-                                        {playerState.isPlaying ? (
-                                            <IconPauseFilled className="size-8" />
-                                        ) : (
-                                            <IconPlayFilled className="size-8" />
-                                        )}
-                                    </button>
-                                </ZoomHover>
-                                <ZoomHover size="md">
-                                    <button
-                                        onClick={() => handleSeek(10)}
-                                        className="size-10 rounded-full border-2 border-primary bg-primary flex justify-center items-center text-secondary hover:text-primary"
-                                    >
-                                        <IconFastForward className="size-6" />
-                                    </button>
-                                </ZoomHover>
-                            </div>
-                            <div className="flex flex-row gap-1 @md:gap-2 justify-end items-center shrink-0">
-                                <div className="hidden @md:block">
-                                    <Select
-                                        value={playerState.playbackRate.toString()}
-                                        onValueChange={(value) => handlePlaybackRateChange(parseFloat(value))}
-                                        groups={[
-                                            {
-                                                label: 'Playback Speed',
-                                                items: [
-                                                    { value: '0.5', label: '0.5x' },
-                                                    { value: '1', label: '1x' },
-                                                    { value: '1.5', label: '1.5x' },
-                                                    { value: '2', label: '2x' },
-                                                ],
-                                            },
-                                        ]}
-                                        className="text-sm font-semibold text-right dark:text-white"
-                                    />
-                                </div>
-                                <button
-                                    onClick={toggleFullscreen}
-                                    className="text-sm font-semibold text-right dark:text-white"
-                                >
-                                    <IconFullScreen className="size-5" />
-                                </button>
-                            </div>
-                        </div>
+                        <MediaControls
+                            currentTime={playerState.currentTime}
+                            duration={playerState.duration}
+                            isPlaying={playerState.isPlaying}
+                            volume={playerState.volume}
+                            isMuted={playerState.isMuted}
+                            playbackRate={playerState.playbackRate}
+                            onSeek={performSeek}
+                            onTogglePlay={handlePlayPause}
+                            onToggleMute={toggleMute}
+                            onVolumeChange={handleVolumeChange}
+                            onPlaybackRateChange={handlePlaybackRateChange}
+                            onFullscreen={toggleFullscreen}
+                        />
                     </section>
                 </main>
             </div>
