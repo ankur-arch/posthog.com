@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
-import { formatTime, type PlayerState } from './Player'
+import { formatTime } from 'components/MediaControls'
+import type { PlayerState } from './Player'
 
 /**
  * The transcript for a `LearnTVPlayer`. It lists the player's caption cues as buttons that play from that line, and

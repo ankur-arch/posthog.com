@@ -20,8 +20,6 @@ export interface PlayerState {
     playFrom: (time: number) => void
 }
 
-export { formatTime } from 'components/MediaControls'
-
 /**
  * The Learn TV player: a Cloudinary MP4 with a WebVTT captions track and the shared `MediaControls`. Both the
  * Learn TV window and product Learn hubs use it. `children` gets the caption cues, so a transcript matches the
