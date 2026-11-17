@@ -1,0 +1,50 @@
+---
+title: Linking Prisma Postgres as a source
+sidebar: Docs
+showTitle: true
+availability:
+  free: full
+  selfServe: full
+  enterprise: full
+---
+
+You can link your [Prisma Postgres](https://www.prisma.io/postgres) database tables to PostHog with the [Postgres source](/docs/data-pipelines/sources/postgres). Prisma Postgres is managed PostgreSQL, so there is no separate connector to install.
+
+To link Prisma Postgres:
+
+1. Go to the [Data pipeline page](https://app.posthog.com/data-management/sources) and the sources tab in PostHog
+2. Click **New source** and select Postgres
+3. Enter your Prisma Postgres connection details. You can find them in the connection string for your database, which has the format `postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require`:
+   - **Host:** `db.prisma.io`. This is the direct host for your database.
+   - **Port:** `5432`.
+   - **Database:** `postgres`.
+   - **User:** The username from your connection string.
+   - **Password:** The password from your connection string.
+   - **Schema:** `public`, or the schema where your tables are located. If you leave this blank, PostHog lists tables from all schemas, which includes the `ppg.query_stats` view that Prisma Postgres adds to your database.
+4. Click **Next**, select the tables to sync, choose the sync method for each table, then click **Link**
+
+PostHog then starts syncing your Prisma Postgres data. You can see details and progress in the [sources tab](https://app.posthog.com/data-management/sources).
+
+## Sync methods
+
+PostHog detects the primary key of each table and suggests a field for incremental sync. A timestamp column that changes on every write, such as `updated_at`, lets PostHog pick up both new and edited rows. An auto-incrementing `id` only picks up new rows.
+
+If the incremental field has no index, each sync scans the whole table. Add an index to the field for large tables:
+
+```sql
+CREATE INDEX orders_updated_at_idx ON orders (updated_at);
+```
+
+See the [Postgres source documentation](/docs/data-pipelines/sources/postgres#sync-methods) for details on each sync method.
+
+## Selecting columns
+
+By default, PostHog syncs all columns from each table. See [Selecting columns](/docs/data-pipelines/sources/postgres#selecting-columns) on the Postgres page to sync only specific columns or to mask sensitive ones.
+
+Prisma Postgres requires SSL/TLS for all connections, which PostHog uses by default. The **Verify the server certificate?** option also works with Prisma Postgres. See [Verify the server certificate](/docs/data-pipelines/sources/postgres#verify-the-server-certificate) on the Postgres page for details.
+
+## Troubleshooting
+
+If PostHog can't connect, check that the username and password match your connection string exactly. Prisma Postgres rejects wrong credentials with the message `Your Postgres credentials are incorrect. Please check your username and password and try again.`
+
+For other issues, see the [Postgres troubleshooting guide](/docs/data-pipelines/sources/postgres#troubleshooting).
